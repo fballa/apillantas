@@ -44,12 +44,13 @@ class Database {
     private static $conn = null;
     
     public static function getConnection() {
+        
         if (self::$conn === null) {
             try {
                 self::$conn = new PDO(
-                    "mysql:host=sql103.byethost14.com;dbname=b14_40953560_Dbllantas",
-                    "b14_40953560",
-                    "Tempo2026",
+                    "mysql:host=mysql-3425c3b8-franklinl-48c4.b.aivencloud.com;port=15806;dbname=defaultdb",
+                    "avnadmin",
+                    "AVNS_36gkMok-WoDkZ2lUyMX",
                     [
                         PDO::ATTR_PERSISTENT => false, // <-- CRÍTICO
                         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

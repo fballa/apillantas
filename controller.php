@@ -1245,9 +1245,12 @@ public function getTestimonialsWithDetails($id = null) {
     
     
     public function getTireMovements($tire_id) {
+    error_log("=== DEBUG getTireMovements START ===");
+    error_log("tire_id: " . $tire_id);
+    
     try {
-        // Validar parámetro
         if (!is_numeric($tire_id) || $tire_id <= 0) {
+            error_log("Validation failed for tire_id");
             http_response_code(400);
             echo json_encode([
                 "success" => false,
@@ -1256,43 +1259,79 @@ public function getTestimonialsWithDetails($id = null) {
             return;
         }
         
-        // Usar conexión directa
-        $database = new Database();
-        $conn = $database->getConnection();
+        error_log("Validation passed");
         
-        $query = "SELECT im.*, 
-                         mt.model as tire_model, 
-                         mt.full_size as tire_size,
-                         tb.name as tire_brand_name
-                  FROM inventory_movements im
-                  LEFT JOIN motorcycle_tires mt ON im.tire_id = mt.id
-                  LEFT JOIN tire_brands tb ON mt.brand_id = tb.id
-                  WHERE im.tire_id = :tire_id
-                  ORDER BY im.created_at DESC";
+        // Conexión con manejo explícito
+        try {
+            $database = new Database();
+            $conn = $database->getConnection();
+            error_log("Database instance created");
+        } catch (Exception $connEx) {
+            error_log("Database connection error: " . $connEx->getMessage());
+            throw new Exception("Database error: " . $connEx->getMessage());
+        }
+        
+        if (!$conn) {
+            error_log("Connection is NULL");
+            throw new Exception("Connection object is null");
+        }
+        
+        error_log("Connection obtained successfully");
+        
+        // Consulta simplificada paso a paso
+        $query = "SELECT * FROM inventory_movements WHERE tire_id = :tire_id LIMIT 5";
+        error_log("Query: " . $query);
         
         $stmt = $conn->prepare($query);
         $stmt->bindParam(':tire_id', $tire_id, PDO::PARAM_INT);
-        $stmt->execute();
+        
+        if (!$stmt->execute()) {
+            $error = $stmt->errorInfo();
+            error_log("Execute failed: " . print_r($error, true));
+            throw new Exception("Query execution failed: " . $error[2]);
+        }
         
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("Results found: " . count($result));
         
+        // Respuesta de éxito incluso si no hay datos
         http_response_code(200);
         echo json_encode([
             "success" => true,
             "data" => $result,
             "count" => count($result),
-            "tire_id" => $tire_id
+            "tire_id" => (int)$tire_id,
+            "debug" => [
+                "query" => $query,
+                "execution_time" => date('Y-m-d H:i:s')
+            ]
         ]);
         
+        error_log("=== DEBUG getTireMovements SUCCESS ===");
+        
     } catch (Exception $e) {
-        error_log("getTireMovements error: " . $e->getMessage());
+        error_log("EXCEPTION in getTireMovements: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        
         http_response_code(500);
         echo json_encode([
             "success" => false, 
-            "message" => "Error al obtener movimientos"
+            "message" => "Error interno",
+            "debug" => [
+                "exception" => $e->getMessage(),
+                "tire_id" => $tire_id,
+                "timestamp" => date('Y-m-d H:i:s')
+            ]
         ]);
+        
+        error_log("=== DEBUG getTireMovements ERROR ===");
     }
 }
+    
+    
+    
+    
+    
     
     
 }

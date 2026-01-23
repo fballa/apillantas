@@ -97,9 +97,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+            /*if ($table !== 'audit_logs') {
                 $this->logAudit('CREAR', $table, null);
             }
+            */
             
             $id = $this->models[$table]->create($data);
             
@@ -134,9 +135,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+           /* if ($table !== 'audit_logs') {
                 $this->logAudit('ACTUALIZAR', $table, $id);
             }
+            */
             
             $result = $this->models[$table]->update($id, $data);
             
@@ -170,9 +172,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+           /* if ($table !== 'audit_logs') {
                 $this->logAudit('ELIMINAR', $table, $id);
             }
+            */
             
             $result = $this->models[$table]->delete($id);
             
@@ -1169,6 +1172,78 @@ public function getTestimonialsWithDetails($id = null) {
         ]);
     }
 }
+    
+    
+    
+    
+    public function updateTirePriceWithHistory($id) {
+    try {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        // Validar campos requeridos
+        if (!isset($data['new_price']) || !isset($data['reason'])) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Campos requeridos: new_price, reason"
+            ]);
+            return;
+        }
+        
+        $tireModel = $this->models['motorcycle_tires'];
+        $priceModel = $this->models['product_prices'];
+        
+        // Obtener llanta actual
+        $currentTire = $tireModel->getById($id);
+        if (!$currentTire) {
+            http_response_code(404);
+            echo json_encode(["success" => false, "message" => "Llanta no encontrada"]);
+            return;
+        }
+        
+        // 1. Registrar en histórico
+        $historyData = [
+            'tire_id' => $id,
+            'old_price' => $currentTire['price'],
+            'new_price' => $data['new_price'],
+            'changed_by' => $data['changed_by'] ?? 1,
+            'reason' => $data['reason'],
+            'effective_from' => date('Y-m-d H:i:s')
+        ];
+        
+        $historyId = $priceModel->create($historyData);
+        
+        // 2. Actualizar precio en llanta
+        $updateResult = $tireModel->update($id, ['price' => $data['new_price']]);
+        
+        if ($updateResult && $historyId) {
+            echo json_encode([
+                "success" => true,
+                "message" => "Precio actualizado e histórico registrado",
+                "price_update" => [
+                    "tire_id" => $id,
+                    "old_price" => (float)$currentTire['price'],
+                    "new_price" => (float)$data['new_price'],
+                    "difference" => (float)$data['new_price'] - (float)$currentTire['price']
+                ],
+                "history_record" => [
+                    "id" => $historyId,
+                    "reason" => $data['reason'],
+                    "effective_from" => $historyData['effective_from']
+                ]
+            ]);
+        } else {
+            throw new Exception("Error en la actualización");
+        }
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(["success" => false, "message" => "Error: " . $e->getMessage()]);
+    }
+}
+    
+    
+    
     
     
     

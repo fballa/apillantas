@@ -276,6 +276,7 @@ switch ($method) {
                         "Llantas con bajo stock" => "GET /api/index.php?path=low_stock_tires",
                         "Ofertas activas" => "GET /api/index.php?path=active_offers",
                         "Llantas por tipo" => "GET /api/index.php?path=tires_by_type&type=Urbana",
+                        'update_tire_price' => 'updateTirePriceWithHistory',
                         "Historial de precios" => "GET /api/index.php?path=tire_price_history&tire_id=1"
                     ]
                 ],

@@ -97,9 +97,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+            /*if ($table !== 'audit_logs') {
                 $this->logAudit('CREAR', $table, null);
             }
+            */
             
             $id = $this->models[$table]->create($data);
             
@@ -134,9 +135,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+            /*if ($table !== 'audit_logs') {
                 $this->logAudit('ACTUALIZAR', $table, $id);
-            }
+            }*/
+            
             
             $result = $this->models[$table]->update($id, $data);
             
@@ -170,10 +172,10 @@ class Controller {
             }
             
             // Registrar acción de auditoría si es necesario
-            if ($table !== 'audit_logs') {
+           /* if ($table !== 'audit_logs') {
                 $this->logAudit('ELIMINAR', $table, $id);
             }
-            
+            */
             $result = $this->models[$table]->delete($id);
             
             if ($result) {

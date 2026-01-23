@@ -107,6 +107,7 @@ $special_functions = [
     'store_inventory' => 'getStoreInventory',
     'orders_by_status' => 'getOrdersByStatus',
     'dashboard_stats' => 'getDashboardStats',
+    'update_tire_price' =>'updateTirePriceWithHistory',
     'average_rating' => 'getAverageRating'
 ];
 

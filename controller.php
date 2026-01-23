@@ -1244,7 +1244,55 @@ public function getTestimonialsWithDetails($id = null) {
     
     
     
-    
+    public function getTireMovements($tire_id) {
+    try {
+        // Validar parámetro
+        if (!is_numeric($tire_id) || $tire_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "ID de llanta inválido"
+            ]);
+            return;
+        }
+        
+        // Usar conexión directa
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        $query = "SELECT im.*, 
+                         mt.model as tire_model, 
+                         mt.full_size as tire_size,
+                         tb.name as tire_brand_name
+                  FROM inventory_movements im
+                  LEFT JOIN motorcycle_tires mt ON im.tire_id = mt.id
+                  LEFT JOIN tire_brands tb ON mt.brand_id = tb.id
+                  WHERE im.tire_id = :tire_id
+                  ORDER BY im.created_at DESC";
+        
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':tire_id', $tire_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        http_response_code(200);
+        echo json_encode([
+            "success" => true,
+            "data" => $result,
+            "count" => count($result),
+            "tire_id" => $tire_id
+        ]);
+        
+    } catch (Exception $e) {
+        error_log("getTireMovements error: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
+            "success" => false, 
+            "message" => "Error al obtener movimientos"
+        ]);
+    }
+}
     
     
 }

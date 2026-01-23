@@ -245,6 +245,25 @@ class AuditLogs extends BaseModel {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
+    
+    
+    public function logAction($user_id, $action, $entity, $entity_id) {
+        $data = [
+            'user_id' => $user_id,
+            'action' => $action,
+            'entity' => $entity,
+            'entity_id' => $entity_id
+        ];
+        
+        try {
+            return $this->create($data);
+        } catch (Exception $e) {
+            error_log("Error en logAction: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    
 }
 
 class Blogs extends BaseModel {

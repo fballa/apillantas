@@ -904,25 +904,7 @@ public function getTestimonialsWithDetails($id = null) {
         }
     }
     
-    public function getTireMovements($tire_id) {
-        try {
-            $result = $this->models['inventory_movements']->getTireMovements($tire_id);
-            
-            http_response_code(200);
-            echo json_encode([
-                "success" => true,
-                "data" => $result,
-                "count" => count($result)
-            ]);
-            
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode([
-                "success" => false,
-                "message" => "Error: " . $e->getMessage()
-            ]);
-        }
-    }
+    
     
     public function getOrderItemsByOrder($order_id) {
         try {

@@ -160,7 +160,8 @@ public function getConnection() {
         return $row ? $row : null;
     }
     
-    public function create($data) {
+   /*
+   public function create($data) {
         $columns = implode(", ", array_keys($data));
         $placeholders = implode(", ", array_fill(0, count($data), "?"));
         
@@ -178,6 +179,39 @@ public function getConnection() {
         
         return false;
     }
+    */
+    
+    
+    public function create($data) {
+    $columns = implode(", ", array_keys($data));
+    $placeholders = implode(", ", array_fill(0, count($data), "?"));
+    
+    $query = "INSERT INTO " . $this->table . " (" . $columns . ") VALUES (" . $placeholders . ")";
+    $stmt = $this->conn->prepare($query);
+    
+    $i = 1;
+    foreach ($data as $value) {
+        // Manejar valores nulos
+        if ($value === null) {
+            $stmt->bindValue($i++, null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue($i++, $value);
+        }
+    }
+    
+    if ($stmt->execute()) {
+        return $this->conn->lastInsertId();
+    }
+    
+    
+    // Para debugging, puedes loggear el error
+    // error_log("Error en create(): " . print_r($stmt->errorInfo(), true));
+   
+    return false;
+    
+}
+    
+    
     
     public function update($id, $data) {
         $setClause = [];
@@ -309,6 +343,19 @@ class Customers extends BaseModel {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
+    
+    
+      // NUEVO MÉTODO: Buscar cliente por email
+    public function findByEmail($email) {
+        $query = "SELECT * FROM " . $this->table . " WHERE email = ? LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(1, $email);
+        $stmt->execute();
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    
 }
 
 class InventoryMovements extends BaseModel {

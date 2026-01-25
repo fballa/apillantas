@@ -107,6 +107,10 @@ $special_functions = [
     'store_inventory' => 'getStoreInventory',
     'orders_by_status' => 'getOrdersByStatus',
     'dashboard_stats' => 'getDashboardStats',
+    // ... funciones existentes ...
+    'create_order' => 'createOrder',
+    // ... funciones existentes ...
+    'customer_by_email' => 'getCustomerByEmail',
     'update_tire_price' =>'updateTirePriceWithHistory',
     'average_rating' => 'getAverageRating'
 ];

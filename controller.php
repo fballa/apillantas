@@ -1315,8 +1315,251 @@ public function getTestimonialsWithDetails($id = null) {
     
     
     
-    
+    public function getCustomerByEmail() {
+    try {
+        // Obtener email del parámetro GET
+        $email = isset($_GET['email']) ? trim($_GET['email']) : null;
+        
+        if (!$email) {
+            throw new Exception("Correo electrónico requerido");
+        }
+        
+        // Validar formato de email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception("Formato de correo electrónico inválido");
+        }
+        
+        // Buscar cliente por email
+        $result = $this->models['customers']->findByEmail($email);
+        
+        if ($result) {
+            http_response_code(200);
+            echo json_encode([
+                "success" => true,
+                "found" => true,
+                "data" => $result,
+                "message" => "Cliente encontrado"
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode([
+                "success" => true,
+                "found" => false,
+                "data" => null,
+                "message" => "Cliente no encontrado"
+            ]);
+        }
+        
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => "Error: " . $e->getMessage()
+        ]);
+    }
 }
+
+
+
+
+
+public function createOrder() {
+    try {
+        // Obtener datos JSON
+        $input = json_decode(file_get_contents("php://input"), true);
+        
+        // Validar datos mínimos
+        if (empty($input['order_items']) || count($input['order_items']) == 0) {
+            throw new Exception("La orden debe contener al menos un item");
+        }
+        
+        if (empty($input['customer']) || !is_array($input['customer'])) {
+            throw new Exception("Datos del cliente requeridos");
+        }
+        
+        // Iniciar transacción
+        $conn = $this->models['orders']->getConnection();
+        $conn->beginTransaction();
+        
+        // ============================================
+        // 1. MANEJAR CLIENTE - LÓGICA SIMPLIFICADA
+        // ============================================
+        $customer_id = null;
+        
+        // Validar datos del cliente
+        $this->validateCustomerData($input['customer']);
+        
+        // LÓGICA: Si customer_id es null/0, CREAR. Si es mayor a 0, ACTUALIZAR
+        if (isset($input['customer_id']) && $input['customer_id'] > 0) {
+            // ACTUALIZAR cliente existente
+            $customer_id = (int) $input['customer_id'];
+            
+            // Verificar si el cliente existe
+            $existing_customer = $this->models['customers']->getById($customer_id);
+            if (!$existing_customer) {
+                throw new Exception("Cliente con ID $customer_id no encontrado");
+            }
+            
+            // Actualizar cliente existente
+            $result = $this->models['customers']->update($customer_id, $input['customer']);
+            if (!$result) {
+                throw new Exception("Error al actualizar cliente");
+            }
+            
+            $customer_action = "updated";
+        } else {
+            // CREAR nuevo cliente (customer_id es 0, null o no existe)
+            $customer_id = $this->models['customers']->create($input['customer']);
+            if (!$customer_id) {
+                throw new Exception("Error al crear cliente");
+            }
+            
+            $customer_action = "created";
+        }
+        
+        // ============================================
+        // 2. VALIDAR ITEMS Y CALCULAR TOTALES
+        // ============================================
+        $order_total = 0;
+        $items_validated = [];
+        
+        foreach ($input['order_items'] as $item) {
+            // Validar item básico
+            if (empty($item['tire_id']) || empty($item['quantity'])) {
+                throw new Exception("Cada item debe tener tire_id y quantity");
+            }
+            
+            // Obtener información de la llanta
+            $tire = $this->models['motorcycle_tires']->getById($item['tire_id']);
+            if (!$tire) {
+                throw new Exception("Llanta con ID {$item['tire_id']} no encontrada");
+            }
+            
+            // Validar stock
+            if ($tire['stock'] < $item['quantity']) {
+                throw new Exception("Stock insuficiente para {$tire['model']}. Disponible: {$tire['stock']}, Solicitado: {$item['quantity']}");
+            }
+            
+            // Calcular precio
+            $price = isset($item['price']) ? $item['price'] : $tire['price'];
+            $subtotal = $price * $item['quantity'];
+            $order_total += $subtotal;
+            
+            // Guardar item validado
+            $items_validated[] = [
+                'tire_id' => $item['tire_id'],
+                'quantity' => $item['quantity'],
+                'price' => $price,
+                'subtotal' => $subtotal,
+                'tire_data' => $tire
+            ];
+        }
+        
+        // ============================================
+        // 3. CREAR LA ORDEN
+        // ============================================
+        $order_data = [
+            'customer_id' => $customer_id,
+            'status' => isset($input['order']['status']) ? $input['order']['status'] : 'NUEVO',
+            'payment_method' => isset($input['order']['payment_method']) ? $input['order']['payment_method'] : 'EFECTIVO',
+            'subtotal' => $order_total,
+            'discount' => isset($input['order']['discount']) ? $input['order']['discount'] : 0,
+            'tax' => isset($input['order']['tax']) ? $input['order']['tax'] : 0,
+            'total' => $order_total,
+            'notes' => isset($input['order']['notes']) ? $input['order']['notes'] : ''
+        ];
+        
+        $order_id = $this->models['orders']->create($order_data);
+        if (!$order_id) {
+            throw new Exception("Error al crear la orden");
+        }
+        
+        // ============================================
+        // 4. CREAR ITEMS Y ACTUALIZAR STOCK
+        // ============================================
+        foreach ($items_validated as $item) {
+            // Crear item de orden
+            $order_item_data = [
+                'order_id' => $order_id,
+                'tire_id' => $item['tire_id'],
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+                'total' => $item['subtotal']
+            ];
+            
+            $this->models['order_items']->create($order_item_data);
+            
+            // Actualizar stock de llanta
+            $new_stock = $item['tire_data']['stock'] - $item['quantity'];
+            $this->models['motorcycle_tires']->update($item['tire_id'], [
+                'stock' => $new_stock
+            ]);
+            
+            // Registrar movimiento de inventario
+            $movement_data = [
+                'tire_id' => $item['tire_id'],
+                'type' => 'SALIDA',
+                'quantity' => $item['quantity'],
+                'note' => "Venta - Orden #$order_id"
+            ];
+            
+            $this->models['inventory_movements']->create($movement_data);
+        }
+        
+        // Confirmar transacción
+        $conn->commit();
+        
+        // Respuesta exitosa
+        http_response_code(201);
+        echo json_encode([
+            "success" => true,
+            "message" => "Orden creada exitosamente",
+            "order_id" => $order_id,
+            "customer_id" => $customer_id,
+            "total" => $order_total,
+            "items_count" => count($items_validated),
+            "customer_action" => $customer_action
+        ]);
+        
+    } catch (Exception $e) {
+        // Revertir transacción en caso de error
+        if (isset($conn) && $conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        
+        http_response_code(400);
+        echo json_encode([
+            "success" => false,
+            "message" => $e->getMessage()
+        ]);
+    }
+}
+
+// ============================================
+// MÉTODO AUXILIAR PARA VALIDAR DATOS DE CLIENTE
+// ============================================
+private function validateCustomerData($data) {
+    // Campos obligatorios mínimos
+    $required_fields = ['name', 'phone'];
+    
+    foreach ($required_fields as $field) {
+        if (empty($data[$field])) {
+            throw new Exception("Campo de cliente requerido: $field");
+        }
+    }
+    
+    // Validar email si está presente
+    if (!empty($data['email']) && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Formato de email inválido");
+    }
+    
+    return true;
+}
+
+
+
+}
+
 
 
 ?>

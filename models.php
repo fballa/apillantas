@@ -619,12 +619,12 @@ class ProductReviews extends BaseModel {
         if ($id) {
             $query = "SELECT pr.*, 
                       mt.model as tire_model, mt.full_size as tire_size,
-                      tb.name as tire_brand_name,
-                      c.name as customer_name, c.email as customer_email
+                      tb.name as tire_brand_name
+                     
                       FROM product_reviews pr
                       LEFT JOIN motorcycle_tires mt ON pr.tire_id = mt.id
                       LEFT JOIN tire_brands tb ON mt.brand_id = tb.id
-                      LEFT JOIN customers c ON pr.customer_id = c.id
+                    
                       WHERE pr.id = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(1, $id);
@@ -633,12 +633,12 @@ class ProductReviews extends BaseModel {
         } else {
             $query = "SELECT pr.*, 
                       mt.model as tire_model, mt.full_size as tire_size,
-                      tb.name as tire_brand_name,
-                      c.name as customer_name
+                      tb.name as tire_brand_name
+                     
                       FROM product_reviews pr
                       LEFT JOIN motorcycle_tires mt ON pr.tire_id = mt.id
                       LEFT JOIN tire_brands tb ON mt.brand_id = tb.id
-                      LEFT JOIN customers c ON pr.customer_id = c.id
+                     
                       WHERE pr.status = 'APPROVED'
                       ORDER BY pr.created_at DESC";
             $stmt = $this->conn->prepare($query);
@@ -646,6 +646,30 @@ class ProductReviews extends BaseModel {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
     }
+    
+    
+// Dentro de la clase ProductReviews en models.php, agregar:
+
+public function getReviewsByTire($tire_id) {
+    $query = "SELECT pr.*, 
+              mt.model as tire_model, mt.full_size as tire_size,
+              tb.name as tire_brand_name
+            
+              FROM product_reviews pr
+              LEFT JOIN motorcycle_tires mt ON pr.tire_id = mt.id
+              LEFT JOIN tire_brands tb ON mt.brand_id = tb.id
+              
+              WHERE pr.tire_id = ? AND pr.status = 'APPROVED'
+              ORDER BY pr.created_at DESC";
+    
+    $stmt = $this->conn->prepare($query);
+    $stmt->bindParam(1, $tire_id);
+    $stmt->execute();
+    
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+    
+    
 }
 
 

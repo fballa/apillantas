@@ -1,5 +1,6 @@
 <?php
 // index.php - API REST para Sistema de Llantas (versión final)
+ob_start();
 
 // Configuración de CORS y encabezados
 header("Access-Control-Allow-Origin: *");
@@ -372,4 +373,7 @@ switch ($method) {
         ]);
         break;
 }
+
+ob_end_flush();
+
 ?>

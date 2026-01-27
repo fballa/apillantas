@@ -1708,8 +1708,3 @@ public function sendEmail() {
 
 
 ?>
-
-
-
-
-    

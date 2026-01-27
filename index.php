@@ -112,6 +112,7 @@ $special_functions = [
     // ... funciones existentes ...
     'customer_by_email' => 'getCustomerByEmail',
     'update_tire_price' =>'updateTirePriceWithHistory',
+    'send_email' => 'sendEmail',
     'average_rating' => 'getAverageRating'
 ];
 

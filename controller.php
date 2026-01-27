@@ -1557,6 +1557,74 @@ private function validateCustomerData($data) {
 }
 
 
+public function sendEmail() {
+    try {
+        
+        error_log("=== DEBUG sendEmail START ==="); // ← Agrega esto
+        
+        $data = json_decode(file_get_contents("php://input"), true);
+        
+        error_log("Datos recibidos: " . print_r($data, true)); // ← Y esto
+        
+        // Validar datos requeridos
+        if (empty($data['to']) || empty($data['subject']) || empty($data['htmlContent'])) {
+            http_response_code(400);
+            echo json_encode([
+                "success" => false,
+                "message" => "Datos requeridos: to, subject, htmlContent"
+            ]);
+            return;
+        }
+        
+        // Cargar PHPMailer manualmente (sin composer)
+        require_once 'PHPMailer/src/PHPMailer.php';
+        require_once 'PHPMailer/src/SMTP.php';
+        require_once 'PHPMailer/src/Exception.php';
+        
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        
+        // Configuración SMTP (ejemplo con Gmail)
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'franklinballadarespaypal@gmail.com';
+        // Cambia esto
+        $mail->Password = 'ydubswgepdkxmhvr'; 
+        // App Password de Gmail
+        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+        
+        // Remitente y destinatario
+        $mail->setFrom('ventas@mitiendadellantas.com', 'Mi Tienda de Llantas');
+        $mail->addAddress($data['to'], $data['name'] ?? '');
+        
+        // Contenido
+        $mail->isHTML(true);
+        $mail->Subject = $data['subject'];
+        $mail->Body = $data['htmlContent'];
+        $mail->AltBody = strip_tags($data['htmlContent']);
+        
+        if ($mail->send()) {
+            http_response_code(200);
+            echo json_encode([
+                "success" => true,
+                "message" => "Correo enviado exitosamente"
+            ]);
+        } else {
+            throw new Exception("Error PHPMailer: " . $mail->ErrorInfo);
+        }
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "success" => false,
+            "message" => "Error: " . $e->getMessage()
+        ]);
+    }
+}
+
+
+
 
 }
 

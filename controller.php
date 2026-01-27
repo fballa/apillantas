@@ -1558,7 +1558,7 @@ private function validateCustomerData($data) {
 
 
 
-public function sendEmail() {
+/*public function sendEmail() {
     try {
         error_log("=== DEBUG sendEmail START ===");
         
@@ -1618,6 +1618,65 @@ public function sendEmail() {
     }
 }
 
+*/
+
+
+
+
+
+public function sendEmail() {
+    try {
+        $data = json_decode(file_get_contents("php://input"), true);
+        
+        if (empty($data['to']) || empty($data['subject']) || empty($data['htmlContent'])) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Datos requeridos"]);
+            return;
+        }
+        
+        // Cargar PHPMailer
+        require_once 'PHPMailer/src/PHPMailer.php';
+        require_once 'PHPMailer/src/SMTP.php';
+        require_once 'PHPMailer/src/Exception.php';
+        
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        
+        // CONFIGURACIÓN MAILTRAP (USA ESTOS DATOS EXACTOS):
+        $mail->isSMTP();
+        $mail->Host = 'sandbox.smtp.mailtrap.io';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'ebc9a7ff2e36b2';  // ← Funciona para pruebas
+        $mail->Password = '9d7e1f5c5d8b3a';   // ← Funciona para pruebas
+        $mail->Port = 2525;
+        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        
+        // Remitente (puede ser cualquier email para pruebas)
+        $mail->setFrom('ventas@mitiendadellantas.com', 'Mi Tienda de Llantas');
+        $mail->addAddress($data['to'], $data['name'] ?? '');
+        
+        $mail->isHTML(true);
+        $mail->Subject = $data['subject'];
+        $mail->Body = $data['htmlContent'];
+        $mail->AltBody = strip_tags($data['htmlContent']);
+        
+        if ($mail->send()) {
+            echo json_encode([
+                "success" => true,
+                "message" => "Correo enviado (atrapado en Mailtrap)"
+            ]);
+        } else {
+            throw new Exception("Error: " . $mail->ErrorInfo);
+        }
+        
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "success" => false,
+            "message" => "Error: " . $e->getMessage(),
+            "debug" => "Usa las credenciales de arriba"
+        ]);
+    }
+}
 
 
 

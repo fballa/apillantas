@@ -1557,16 +1557,14 @@ private function validateCustomerData($data) {
 }
 
 
+
 public function sendEmail() {
     try {
-        
-        error_log("=== DEBUG sendEmail START ==="); // ← Agrega esto
+        error_log("=== DEBUG sendEmail START ===");
         
         $data = json_decode(file_get_contents("php://input"), true);
+        error_log("Datos recibidos: " . print_r($data, true));
         
-        error_log("Datos recibidos: " . print_r($data, true)); // ← Y esto
-        
-        // Validar datos requeridos
         if (empty($data['to']) || empty($data['subject']) || empty($data['htmlContent'])) {
             http_response_code(400);
             echo json_encode([
@@ -1576,29 +1574,26 @@ public function sendEmail() {
             return;
         }
         
-        // Cargar PHPMailer manualmente (sin composer)
         require_once 'PHPMailer/src/PHPMailer.php';
         require_once 'PHPMailer/src/SMTP.php';
         require_once 'PHPMailer/src/Exception.php';
         
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
         
-        // Configuración SMTP (ejemplo con Gmail)
+        // ✅ CONFIGURACIÓN SENDGRID PARA PRUEBAS
         $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
+        $mail->Host = 'smtp.sendgrid.net';
         $mail->SMTPAuth = true;
-        $mail->Username = 'franklinballadarespaypal@gmail.com';
-        // Cambia esto
-        $mail->Password = 'ydubswgepdkxmhvr'; 
-        // App Password de Gmail
+        $mail->Username = 'apikey';  // ← Esto es literal
+        $mail->Password = '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'; 
+        // Tu API Key real
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
         
-        // Remitente y destinatario
-        $mail->setFrom('ventas@mitiendadellantas.com', 'Mi Tienda de Llantas');
+        // ✅ USAR EMAIL VERIFICADO COMO SINGLE SENDER
+        $mail->setFrom('ventas@mitiendadellantas.netlify.app', 'Mi Tienda de Llantas');
         $mail->addAddress($data['to'], $data['name'] ?? '');
         
-        // Contenido
         $mail->isHTML(true);
         $mail->Subject = $data['subject'];
         $mail->Body = $data['htmlContent'];
